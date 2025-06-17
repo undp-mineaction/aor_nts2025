@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>UNDP NTS AOR 2025</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/dark/main.css" />
+  <script src="https://js.arcgis.com/4.26/"></script>
+
+  <style>
+    html, body, #viewDiv {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Montserrat', sans-serif;
+      background-color: #111;
+    }
+
+    #titleBox {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: transparent;
+      color: #ffffff;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 54px;
+      font-weight: 400;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+      z-index: 110;
+      letter-spacing: 2px;
+      text-shadow: none;
+    }
+
+    #midFilterContainer {
+      position: absolute;
+      left: 20px;
+      top: 48%;
+      transform: translateY(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .filterBlock {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    #filterTitle {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 54px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      text-shadow: none;
+    }
+
+    #filterOrgLabel {
+      font-weight: bold;
+      text-shadow: none;
+    }
+
+    #circleFilters {
+      display: flex;
+      flex-direction: row;
+      gap: 5px;
+      justify-content: flex-start;
+    }
+
+    .circle-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid #ffff;
+      background-color: transparent;
+      cursor: pointer;
+      transition: 0.2s all ease;
+    }
+
+    .circle-btn:hover {
+      background-color: rgba(0, 181, 226, 0.2);
+      box-shadow: 0 0 8px #00B5E2;
+    }
+
+    #hromadaCounter {
+      margin-top: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: #ffffff;
+      letter-spacing: 1px;
+      text-shadow: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <!-- Title Box -->
+  <div id="titleBox">UNDP NTS AOR 2025</div>
+
+  <!-- NGO Filter Buttons + Hromada Counter -->
+  <div id="midFilterContainer">
+    <div class="filterBlock">
+      <div id="filterTitle"><span id="filterOrgLabel">ALL NGOs</span></div>
+      <div id="circleFilters">
+        <button class="circle-btn active" title="All NGOs" data-filter="all" data-label="ALL NGOs" data-color="#00B5E2"></button>
+        <button class="circle-btn" title="DRC" data-filter="drc" data-label="DRC" data-color="#FFCC00"></button>
+        <button class="circle-btn" title="FSD" data-filter="fsd" data-label="FSD" data-color="#00FF88"></button>
+        <button class="circle-btn" title="DDG" data-filter="ddg" data-label="DDG" data-color="#FF6666"></button>
+      </div>
+      <div id="hromadaCounter">HROMADAS: 0</div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer"
+    ], function(Map, MapView, FeatureLayer) {
+
+      // Animate Counter
+      function animateCounter(element, targetValue) {
+        let current = 0;
+        const duration = 800;
+        const startTime = performance.now();
+
+        function update(time) {
+          const elapsed = time - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const value = Math.floor(progress * targetValue);
+          element.textContent = `HROMADAS: ${value}`;
+          if (progress < 1) {
+            requestAnimationFrame(update);
+          }
+        }
+
+        requestAnimationFrame(update);
+      }
+
+      const map = new Map({
+        basemap: "dark-gray-vector"
+      });
+
+      const baseFilter = "status_1 IS NULL OR LOWER(status_1) <> 'occupied'";
+
+      const ngoLayer = new FeatureLayer({
+        url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/NTS_TableJoin_POP_NTS/FeatureServer/0",
+        outFields: ["*"],
+        definitionExpression: baseFilter,
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-fill",
+            color: "#00B5E2",
+            style: "solid",
+            outline: {
+              color: "#ffffff",
+              width: 1
+            }
+          }
+        },
+        popupTemplate: {
+          title: "{org_plan20_1}",
+          content: `
+            <b>Org (Plan 2020):</b> {org_plan20_1}<br/>
+            <b>Hromada:</b> {Hromada_Name}<br/>
+            <b>Region:</b> {Oblast_Name}
+          `
+        }
+      });
+      map.add(ngoLayer);
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [31.1656, 48.3794],
+        zoom: 6,
+        constraints: {
+          geometry: {
+            type: "extent",
+            xmin: 22.15,
+            ymin: 44.38,
+            xmax: 40.23,
+            ymax: 52.38,
+            spatialReference: { wkid: 4326 }
+          },
+          minZoom: 6,
+          maxZoom: 12,
+          snapToZoom: false
+        }
+      });
+
+      view.ui.remove("zoom");
+
+      const filterButtons = document.querySelectorAll(".circle-btn");
+      const filterOrgLabel = document.getElementById("filterOrgLabel");
+      const hromadaCounter = document.getElementById("hromadaCounter");
+
+      filterButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          filterButtons.forEach(btn => {
+            btn.classList.remove("active");
+            btn.style.backgroundColor = "transparent";
+            btn.style.boxShadow = "none";
+          });
+
+          button.classList.add("active");
+
+          const filterValue = button.getAttribute("data-filter");
+          const color = button.getAttribute("data-color");
+          const label = button.getAttribute("data-label");
+
+          filterOrgLabel.textContent = label.toUpperCase();
+          filterOrgLabel.style.color = color;
+          filterOrgLabel.style.textShadow = "none";
+
+          button.style.backgroundColor = color;
+          button.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
+
+          const expression = 
+            filterValue === "all"
+              ? baseFilter
+              : `(${baseFilter}) AND LOWER(org_plan20_1) = '${filterValue.toLowerCase()}'`;
+
+          ngoLayer.definitionExpression = expression;
+
+          // Update symbol color
+          ngoLayer.renderer = {
+            type: "simple",
+            symbol: {
+              type: "simple-fill",
+              color: color,
+              style: "solid",
+              outline: {
+                color: "#ffffff",
+                width: 1
+              }
+            }
+          };
+
+          // Query and animate HROMADA counter using admin_2en
+          ngoLayer.queryFeatures({
+            where: expression,
+            returnGeometry: false,
+            outFields: ["admin3_eng"]
+          }).then(function(result) {
+            const uniqueHromadas = new Set(result.features.map(f => f.attributes.admin3_eng));
+            animateCounter(hromadaCounter, uniqueHromadas.size);
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>
