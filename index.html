@@ -174,7 +174,10 @@
           responsive: false,
           cutout: '75%',
           animation: { animateRotate: true, duration: 800 },
-          plugins: { legend: { display: false }, tooltip: { enabled: false } }
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true, backgroundColor: '#222', titleColor: '#fff', bodyColor: '#fff' }
+          }
         }
       });
 
