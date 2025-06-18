@@ -80,16 +80,6 @@
       transition: 0.2s all ease;
     }
 
-    .circle-btn.active {
-      background-color: #00B5E2;
-      box-shadow: 0 0 10px #00B5E2;
-    }
-
-    .circle-btn:hover {
-      background-color: rgba(0, 181, 226, 0.2);
-      box-shadow: 0 0 8px #00B5E2;
-    }
-
     .counterText {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 28px;
@@ -176,7 +166,12 @@
           animation: { animateRotate: true, duration: 800 },
           plugins: {
             legend: { display: false },
-            tooltip: { enabled: true, backgroundColor: '#222', titleColor: '#fff', bodyColor: '#fff' }
+            tooltip: {
+              enabled: true,
+              backgroundColor: '#222',
+              titleColor: '#fff',
+              bodyColor: '#fff'
+            }
           }
         }
       });
@@ -227,6 +222,7 @@
       const oblastCounter = document.getElementById("oblastCounter");
       const raionCounter = document.getElementById("raionCounter");
       const hromadaCounter = document.getElementById("hromadaCounter");
+
       function animateCounter(el, val) {
         const duration = 800, start = performance.now();
         function step(t) {
@@ -267,16 +263,29 @@
 
       const filterButtons = document.querySelectorAll(".circle-btn");
       const filterOrgLabel = document.getElementById("filterOrgLabel");
+
       filterButtons.forEach(button => {
         button.addEventListener("click", () => {
-          filterButtons.forEach(btn => btn.classList.remove("active"));
+          filterButtons.forEach(btn => {
+            btn.classList.remove("active");
+            btn.style.backgroundColor = "transparent";
+            btn.style.boxShadow = "none";
+          });
+
           button.classList.add("active");
-          const filter = button.dataset.filter,
-                color = button.dataset.color,
-                label = button.dataset.label;
+          const filter = button.dataset.filter;
+          const color = button.dataset.color;
+          const label = button.dataset.label;
+
+          button.style.backgroundColor = color;
+          button.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
           filterOrgLabel.textContent = label;
           filterOrgLabel.style.color = color;
-          const where = filter === "all" ? baseFilter : `(${baseFilter}) AND LOWER(org_plan20_1) = '${filter}'`;
+
+          const where = filter === "all"
+            ? baseFilter
+            : `(${baseFilter}) AND LOWER(org_plan20_1) = '${filter}'`;
+
           updateStats(where, color);
         });
       });
