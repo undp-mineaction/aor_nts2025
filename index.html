@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <title>UNDP NTS AOR 2025</title>
 
-  <!-- Fonts -->
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Fonts and ArcGIS -->
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/dark/main.css" />
   <script src="https://js.arcgis.com/4.26/"></script>
@@ -22,17 +25,12 @@
       position: absolute;
       top: 20px;
       left: 20px;
-      background-color: transparent;
       color: #ffffff;
       font-family: 'Bebas Neue', sans-serif;
       font-size: 54px;
       font-weight: 400;
-      padding: 0;
-      border-radius: 0;
-      box-shadow: none;
       z-index: 110;
       letter-spacing: 2px;
-      text-shadow: none;
     }
 
     #midFilterContainer {
@@ -59,26 +57,24 @@
       letter-spacing: 2px;
       text-transform: uppercase;
       margin-bottom: 4px;
-      text-shadow: none;
     }
 
     #filterOrgLabel {
       font-weight: bold;
-      text-shadow: none;
     }
 
     #circleFilters {
       display: flex;
       flex-direction: row;
       gap: 5px;
-      justify-content: flex-start;
+      margin-bottom: 20px;
     }
 
     .circle-btn {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      border: 1px solid #ffff;
+      border: 1px solid #fff;
       background-color: transparent;
       cursor: pointer;
       transition: 0.2s all ease;
@@ -89,24 +85,49 @@
       box-shadow: 0 0 8px #00B5E2;
     }
 
-    #hromadaCounter {
-      margin-top: 12px;
+    .counterText {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 28px;
       color: #ffffff;
       letter-spacing: 1px;
-      text-shadow: none;
+    }
+
+    #chartContainer {
+      margin-top: 30px;
+      padding-left: 4px;
+      position: relative;
+    }
+
+    #chartLabel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      text-align: center;
+      color: #00B5E2;
+      pointer-events: none;
+    }
+
+    #chartLabel span {
+      display: block;
+      font-size: 14px;
+      font-family: 'Montserrat', sans-serif;
+      color: #aaa;
+    }
+
+    #myDonutChart {
+      width: 220px;
+      height: 220px;
     }
   </style>
 </head>
-
 <body>
   <div id="viewDiv"></div>
 
-  <!-- Title Box -->
   <div id="titleBox">UNDP NTS AOR 2025</div>
 
-  <!-- NGO Filter Buttons + Hromada Counter -->
   <div id="midFilterContainer">
     <div class="filterBlock">
       <div id="filterTitle"><span id="filterOrgLabel">ALL NGOs</span></div>
@@ -114,148 +135,174 @@
         <button class="circle-btn active" title="All NGOs" data-filter="all" data-label="ALL NGOs" data-color="#00B5E2"></button>
         <button class="circle-btn" title="DRC" data-filter="drc" data-label="DRC" data-color="#FFCC00"></button>
         <button class="circle-btn" title="FSD" data-filter="fsd" data-label="FSD" data-color="#00FF88"></button>
-        <button class="circle-btn" title="DDG" data-filter="ddg" data-label="DDG" data-color="#FF6666"></button>
+        <button class="circle-btn" title="UDA" data-filter="uda" data-label="UDA" data-color="#FF6666"></button>
       </div>
-      <div id="hromadaCounter">HROMADAS: 0</div>
+      <div id="oblastCounter" class="counterText">OBLASTS: 0</div>
+      <div id="raionCounter" class="counterText">RAIONS: 0</div>
+      <div id="hromadaCounter" class="counterText">HROMADAS: 0</div>
+      <div id="chartContainer">
+        <canvas id="myDonutChart"></canvas>
+        <div id="chartLabel">0<span>Total Affected</span></div>
+      </div>
     </div>
   </div>
 
   <script>
-    require([
-      "esri/Map",
-      "esri/views/MapView",
-      "esri/layers/FeatureLayer"
-    ], function(Map, MapView, FeatureLayer) {
-
-      // Animate Counter
-      function animateCounter(element, targetValue) {
-        let current = 0;
-        const duration = 800;
-        const startTime = performance.now();
-
-        function update(time) {
-          const elapsed = time - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          const value = Math.floor(progress * targetValue);
-          element.textContent = `HROMADAS: ${value}`;
-          if (progress < 1) {
-            requestAnimationFrame(update);
-          }
-        }
-
-        requestAnimationFrame(update);
-      }
-
-      const map = new Map({
-        basemap: "dark-gray-vector"
+    require(["esri/Map", "esri/views/MapView", "esri/layers/FeatureLayer"], function(Map, MapView, FeatureLayer) {
+      const view = new MapView({
+        container: "viewDiv",
+        map: new Map({ basemap: "dark-gray-vector" }),
+        center: [31.1656, 48.3794],
+        zoom: 6,
+        constraints: { minZoom: 6, maxZoom: 12 }
       });
 
-      const baseFilter = "status_1 IS NULL OR LOWER(status_1) <> 'occupied'";
+      const baseFilter = "status_1 IS NULL OR (LOWER(status_1) <> 'occupied' AND LOWER(status_1) <> 'occupied - out of suspicion')";
 
       const ngoLayer = new FeatureLayer({
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/NTS_TableJoin_POP_NTS/FeatureServer/0",
         outFields: ["*"],
         definitionExpression: baseFilter,
+        popupTemplate: {
+          title: "{org_plan20_1}",
+          content: `<b>Org (Plan 2020):</b> {org_plan20_1}<br/>
+                    <b>Hromada:</b> {admin3_eng}<br/>
+                    <b>Raion:</b> {admin_2en}<br/>
+                    <b>Oblast:</b> {admin_1en}`
+        },
         renderer: {
           type: "simple",
           symbol: {
             type: "simple-fill",
-            color: "#00B5E2",
+            color: "rgba(0,181,226,0.25)",
             style: "solid",
-            outline: {
-              color: "#ffffff",
-              width: 1
-            }
+            outline: { color: "#ffffff", width: 1 }
           }
+        }
+      });
+      view.map.add(ngoLayer);
+
+      const counters = {
+        oblast: document.getElementById("oblastCounter"),
+        raion: document.getElementById("raionCounter"),
+        hromada: document.getElementById("hromadaCounter")
+      };
+
+      const chartLabel = document.getElementById("chartLabel");
+
+      const donutCtx = document.getElementById('myDonutChart').getContext('2d');
+      const donutChart = new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['IDP', 'NDP'],
+          datasets: [{
+            data: [0, 0],
+            backgroundColor: ['#00B5E2', '#88E5FF'],
+            borderWidth: 0,
+            spacing: 4,
+            hoverOffset: 4,
+            hoverBorderWidth: 6,
+            hoverBorderColor: 'rgba(255, 255, 255, 0.1)'
+          }]
         },
-        popupTemplate: {
-          title: "{org_plan20_1}",
-          content: `
-            <b>Org (Plan 2020):</b> {org_plan20_1}<br/>
-            <b>Hromada:</b> {Hromada_Name}<br/>
-            <b>Region:</b> {Oblast_Name}
-          `
-        }
-      });
-      map.add(ngoLayer);
-
-      const view = new MapView({
-        container: "viewDiv",
-        map: map,
-        center: [31.1656, 48.3794],
-        zoom: 6,
-        constraints: {
-          geometry: {
-            type: "extent",
-            xmin: 22.15,
-            ymin: 44.38,
-            xmax: 40.23,
-            ymax: 52.38,
-            spatialReference: { wkid: 4326 }
+        options: {
+          responsive: false,
+          cutout: '75%',
+          animation: {
+            animateRotate: true,
+            duration: 800
           },
-          minZoom: 6,
-          maxZoom: 12,
-          snapToZoom: false
-        }
-      });
-
-      view.ui.remove("zoom");
-
-      const filterButtons = document.querySelectorAll(".circle-btn");
-      const filterOrgLabel = document.getElementById("filterOrgLabel");
-      const hromadaCounter = document.getElementById("hromadaCounter");
-
-      filterButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          filterButtons.forEach(btn => {
-            btn.classList.remove("active");
-            btn.style.backgroundColor = "transparent";
-            btn.style.boxShadow = "none";
-          });
-
-          button.classList.add("active");
-
-          const filterValue = button.getAttribute("data-filter");
-          const color = button.getAttribute("data-color");
-          const label = button.getAttribute("data-label");
-
-          filterOrgLabel.textContent = label.toUpperCase();
-          filterOrgLabel.style.color = color;
-          filterOrgLabel.style.textShadow = "none";
-
-          button.style.backgroundColor = color;
-          button.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
-
-          const expression = 
-            filterValue === "all"
-              ? baseFilter
-              : `(${baseFilter}) AND LOWER(org_plan20_1) = '${filterValue.toLowerCase()}'`;
-
-          ngoLayer.definitionExpression = expression;
-
-          // Update symbol color
-          ngoLayer.renderer = {
-            type: "simple",
-            symbol: {
-              type: "simple-fill",
-              color: color,
-              style: "solid",
-              outline: {
-                color: "#ffffff",
-                width: 1
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const value = context.parsed;
+                  const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return `${context.label}: ${percent}%`;
+                }
               }
             }
-          };
+          }
+        }
+      });
 
-          // Query and animate HROMADA counter using admin_2en
-          ngoLayer.queryFeatures({
-            where: expression,
-            returnGeometry: false,
-            outFields: ["admin3_eng"]
-          }).then(function(result) {
-            const uniqueHromadas = new Set(result.features.map(f => f.attributes.admin3_eng));
-            animateCounter(hromadaCounter, uniqueHromadas.size);
+      function animateTotalLabel(from, to, duration = 800) {
+        const startTime = performance.now();
+        function update(time) {
+          const progress = Math.min((time - startTime) / duration, 1);
+          const value = Math.floor(progress * (to - from) + from);
+          chartLabel.innerHTML = `${value.toLocaleString()}<span>Total Affected</span>`;
+          if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+      }
+
+      function updateStats(expression, color) {
+        ngoLayer.definitionExpression = expression;
+        ngoLayer.renderer = {
+          type: "simple",
+          symbol: {
+            type: "simple-fill",
+            color: `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.25)` ,
+            style: "solid",
+            outline: { color: "#ffffff", width: 1 }
+          }
+        };
+
+        chartLabel.style.color = color;
+
+        ngoLayer.queryFeatures({
+          where: expression,
+          outFields: ["admin_1en", "admin_2en", "admin3_eng", "idp", "ndp"],
+          returnGeometry: false
+        }).then(results => {
+          const features = results.features.map(f => f.attributes);
+          counters.oblast.textContent = `OBLASTS: ${new Set(features.map(f => f.admin_1en)).size}`;
+          counters.raion.textContent = `RAIONS: ${new Set(features.map(f => f.admin_2en)).size}`;
+          counters.hromada.textContent = `HROMADAS: ${new Set(features.map(f => f.admin3_eng)).size}`;
+
+          let idp = 0, ndp = 0;
+          features.forEach(f => {
+            idp += f.idp || 0;
+            ndp += f.ndp || 0;
           });
+
+          donutChart.data.datasets[0].data = [idp, ndp];
+          donutChart.data.datasets[0].backgroundColor = [color, `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.4)`];
+          donutChart.update();
+
+          animateTotalLabel(0, idp + ndp);
+        });
+      }
+
+      updateStats(baseFilter, '#00B5E2');
+
+      document.querySelectorAll(".circle-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".circle-btn").forEach(b => {
+            b.classList.remove("active");
+            b.style.backgroundColor = "transparent";
+            b.style.boxShadow = "none";
+          });
+
+          btn.classList.add("active");
+          const color = btn.getAttribute("data-color");
+          const filter = btn.getAttribute("data-filter");
+          const label = btn.getAttribute("data-label");
+          document.getElementById("filterOrgLabel").textContent = label.toUpperCase();
+          document.getElementById("filterOrgLabel").style.color = color;
+
+          btn.style.backgroundColor = color;
+          btn.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
+
+          const filterExpression = filter === "all"
+            ? baseFilter
+            : `(${baseFilter}) AND LOWER(org_plan20_1) = '${filter.toLowerCase()}'`;
+
+          updateStats(filterExpression, color);
         });
       });
     });
