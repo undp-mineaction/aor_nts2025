@@ -33,6 +33,34 @@
       letter-spacing: 2px;
     }
 
+    #logoImg {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      height: 60px;
+      z-index: 110;
+    }
+
+    #oblastSearch {
+      position: absolute;
+      top: 90px;
+      left: 20px;
+      width: 260px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      z-index: 110;
+      background-color: #222;
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    }
+
+    #oblastSearch::placeholder {
+      color: #aaa;
+    }
+
     #midFilterContainer {
       position: absolute;
       left: 20px;
@@ -122,6 +150,8 @@
   <div id="viewDiv"></div>
 
   <div id="titleBox">UNDP NTS AOR 2025</div>
+  <img src="https://raw.githubusercontent.com/undp-mineaction/ed_v2/main/Blue_logo.png" alt="UNDP Logo" id="logoImg" />
+  <input type="text" id="oblastSearch" placeholder="Search Oblast..." />
 
   <div id="midFilterContainer">
     <div class="filterBlock">
@@ -264,6 +294,30 @@
       const filterButtons = document.querySelectorAll(".circle-btn");
       const filterOrgLabel = document.getElementById("filterOrgLabel");
 
+      let currentOrgFilter = "all";
+      let currentOblast = "";
+
+      const searchInput = document.getElementById("oblastSearch");
+      searchInput.addEventListener("input", () => {
+        currentOblast = searchInput.value.trim();
+        applyCombinedFilter();
+      });
+
+      function applyCombinedFilter() {
+        const orgClause = currentOrgFilter === "all"
+          ? baseFilter
+          : `(${baseFilter}) AND LOWER(org_plan20_1) = '${currentOrgFilter}'`;
+
+        const oblastClause = currentOblast
+          ? `LOWER(admin_1en) LIKE '%${currentOblast.toLowerCase()}%'`
+          : "1=1";
+
+        const combinedWhere = `(${orgClause}) AND (${oblastClause})`;
+
+        const color = document.querySelector(`.circle-btn[data-filter='${currentOrgFilter}']`)?.dataset.color || "#00B5E2";
+        updateStats(combinedWhere, color);
+      }
+
       filterButtons.forEach(button => {
         button.addEventListener("click", () => {
           filterButtons.forEach(btn => {
@@ -273,20 +327,13 @@
           });
 
           button.classList.add("active");
-          const filter = button.dataset.filter;
-          const color = button.dataset.color;
-          const label = button.dataset.label;
+          currentOrgFilter = button.dataset.filter;
+          filterOrgLabel.textContent = button.dataset.label;
+          filterOrgLabel.style.color = button.dataset.color;
+          button.style.backgroundColor = button.dataset.color;
+          button.style.boxShadow = `0 0 10px ${button.dataset.color}, 0 0 20px ${button.dataset.color}`;
 
-          button.style.backgroundColor = color;
-          button.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
-          filterOrgLabel.textContent = label;
-          filterOrgLabel.style.color = color;
-
-          const where = filter === "all"
-            ? baseFilter
-            : `(${baseFilter}) AND LOWER(org_plan20_1) = '${filter}'`;
-
-          updateStats(where, color);
+          applyCombinedFilter();
         });
       });
 
