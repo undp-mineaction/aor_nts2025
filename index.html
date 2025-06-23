@@ -316,7 +316,7 @@ require([
       card.className = "hromada-card";
       card.innerHTML = `
         <div class="hromada-name">${name}</div>
-        <div class="hromada-value" style="color: ${color}">${total}</div>`;
+        <div class="hromada-value" style="color: ${color}">${Math.round(total)}</div>`;
       cardTray.appendChild(card);
     });
   }
