@@ -4,33 +4,41 @@
   <meta charset="UTF-8" />
   <title>UNDP NTS AOR 2025</title>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Fonts and ArcGIS -->
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@700&display=swap" rel="stylesheet" />
+  <!-- ArcGIS & Chart.js -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/dark/main.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://js.arcgis.com/4.26/"></script>
 
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@700&display=swap" rel="stylesheet" />
+
   <style>
-    html, body, #viewDiv {
+    html, body {
       margin: 0;
       padding: 0;
       height: 100%;
       font-family: 'Montserrat', sans-serif;
       background-color: #111;
+      overflow: hidden;
+    }
+
+    #viewDiv {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 130px;
+      z-index: 1;
     }
 
     #titleBox {
       position: absolute;
       top: 20px;
       left: 20px;
-      color: #ffffff;
+      color: #fff;
       font-family: 'Bebas Neue', sans-serif;
       font-size: 54px;
-      font-weight: 400;
-      z-index: 110;
-      letter-spacing: 2px;
+      z-index: 10;
     }
 
     #logoImg {
@@ -38,7 +46,7 @@
       top: 20px;
       right: 20px;
       height: 60px;
-      z-index: 110;
+      z-index: 10;
     }
 
     #oblastSearch {
@@ -50,52 +58,20 @@
       border: none;
       border-radius: 6px;
       font-size: 16px;
-      z-index: 110;
+      z-index: 10;
       background-color: #222;
       color: #fff;
-      font-family: 'Montserrat', sans-serif;
-      box-shadow: 0 0 6px rgba(0,0,0,0.5);
-    }
-
-    #oblastSearch::placeholder {
-      color: #aaa;
     }
 
     #midFilterContainer {
       position: absolute;
       left: 20px;
-      top: 48%;
+      top: 50%;
       transform: translateY(-50%);
-      z-index: 100;
+      z-index: 10;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
       gap: 6px;
-    }
-
-    .filterBlock {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    #filterTitle {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 54px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    #filterOrgLabel {
-      font-weight: bold;
-    }
-
-    #circleFilters {
-      display: flex;
-      flex-direction: row;
-      gap: 5px;
-      margin-bottom: 20px;
     }
 
     .circle-btn {
@@ -103,22 +79,31 @@
       height: 20px;
       border-radius: 50%;
       border: 1px solid #fff;
-      background-color: transparent;
+      background: transparent;
       cursor: pointer;
-      transition: 0.2s all ease;
+      transition: all 0.3s;
+    }
+
+    .circle-btn.active {
+      box-shadow: 0 0 10px #00B5E2, 0 0 20px #00B5E2;
     }
 
     .counterText {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 28px;
-      color: #ffffff;
-      letter-spacing: 1px;
+      color: #fff;
     }
 
     #chartContainer {
-      margin-top: 30px;
-      padding-left: 4px;
+      margin-top: 20px;
       position: relative;
+      width: 220px;
+      height: 220px;
+    }
+
+    #myDonutChart {
+      width: 100%;
+      height: 100%;
     }
 
     #chartLabel {
@@ -128,221 +113,314 @@
       transform: translate(-50%, -50%);
       font-family: 'Bebas Neue', sans-serif;
       font-size: 28px;
-      text-align: center;
       color: #00B5E2;
+      text-align: center;
       pointer-events: none;
     }
 
     #chartLabel span {
       display: block;
       font-size: 14px;
-      font-family: 'Montserrat', sans-serif;
       color: #aaa;
+      font-family: 'Montserrat', sans-serif;
     }
 
-    #myDonutChart {
-      width: 220px;
-      height: 220px;
+    #cardTray {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      padding: 10px 20px;
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .hromada-card {
+      min-width: 140px;
+      background-color: #222;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'Montserrat', sans-serif;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+      opacity: 0;
+      transform: translateX(40px);
+      animation: slideInRight 0.5s forwards;
+    }
+
+    .hromada-name {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .hromada-value {
+      font-size: 22px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1px;
+    }
+
+    .slide-out-left {
+      animation: slideOutLeft 0.4s forwards;
+    }
+
+    @keyframes slideOutLeft {
+      to {
+        opacity: 0;
+        transform: translateX(-40px);
+      }
+    }
+
+    @keyframes slideInRight {
+      to {
+        opacity: 1;
+        transform: translateX(0px);
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="viewDiv"></div>
-
   <div id="titleBox">UNDP NTS AOR 2025</div>
-  <img src="https://raw.githubusercontent.com/undp-mineaction/ed_v2/main/Blue_logo.png" alt="UNDP Logo" id="logoImg" />
-  <input type="text" id="oblastSearch" placeholder="Search Oblast..." />
+  <img src="https://raw.githubusercontent.com/undp-mineaction/ed_v2/main/Blue_logo.png" id="logoImg" />
+  <input type="text" id="oblastSearch" placeholder="Search Oblast, Raion, or Hromada" />
 
   <div id="midFilterContainer">
-    <div class="filterBlock">
-      <div id="filterTitle"><span id="filterOrgLabel">ALL NGOs</span></div>
-      <div id="circleFilters">
-        <button class="circle-btn active" title="All NGOs" data-filter="all" data-label="ALL NGOs" data-color="#00B5E2"></button>
-        <button class="circle-btn" title="DRC" data-filter="drc" data-label="DRC" data-color="#FFCC00"></button>
-        <button class="circle-btn" title="FSD" data-filter="fsd" data-label="FSD" data-color="#00FF88"></button>
-        <button class="circle-btn" title="UDA" data-filter="uda" data-label="UDA" data-color="#FF6666"></button>
-      </div>
-      <div id="oblastCounter" class="counterText" data-label="Oblasts">Oblasts: 0</div>
-      <div id="raionCounter" class="counterText" data-label="Raions">Raions: 0</div>
-      <div id="hromadaCounter" class="counterText" data-label="Hromadas">Hromadas: 0</div>
-      <div id="chartContainer">
-        <canvas id="myDonutChart"></canvas>
-        <div id="chartLabel">0<span>Total Affected</span></div>
-      </div>
+    <div id="filterTitle"><span id="filterOrgLabel">ALL NGOs</span></div>
+    <div style="display: flex; gap: 6px;">
+      <button class="circle-btn active" data-filter="all" data-label="ALL NGOs" data-color="#00B5E2"></button>
+      <button class="circle-btn" data-filter="drc" data-label="DRC" data-color="#FFCC00"></button>
+      <button class="circle-btn" data-filter="fsd" data-label="FSD" data-color="#00FF88"></button>
+      <button class="circle-btn" data-filter="uda" data-label="UDA" data-color="#FF6666"></button>
+    </div>
+    <div id="oblastCounter" class="counterText" data-label="Oblasts">Oblasts: 0</div>
+    <div id="raionCounter" class="counterText" data-label="Raions">Raions: 0</div>
+    <div id="hromadaCounter" class="counterText" data-label="Hromadas">Hromadas: 0</div>
+    <div id="chartContainer">
+      <canvas id="myDonutChart"></canvas>
+      <div id="chartLabel">0<span>Total Affected</span></div>
     </div>
   </div>
 
-  <script>
-    require(["esri/Map", "esri/views/MapView", "esri/layers/FeatureLayer"], function(Map, MapView, FeatureLayer) {
-      const donutCtx = document.getElementById('myDonutChart').getContext('2d');
-      const chartLabel = document.getElementById('chartLabel');
-      const donutChart = new Chart(donutCtx, {
-        type: 'doughnut',
-        data: {
-          labels: ['IDP', 'NDP'],
-          datasets: [{
-            data: [0, 0],
-            backgroundColor: ['#00B5E2', '#444'],
-            borderWidth: 0,
-            spacing: 4,
-            hoverOffset: 4,
-            hoverBorderWidth: 6,
-            hoverBorderColor: 'rgba(255,255,255,0.1)'
-          }]
-        },
-        options: {
-          responsive: false,
-          cutout: '75%',
-          animation: { animateRotate: true, duration: 800 },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              enabled: true,
-              backgroundColor: '#222',
-              titleColor: '#fff',
-              bodyColor: '#fff'
-            }
-          }
+  <div id="cardTray"></div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/layers/FeatureLayer"
+], function(Map, MapView, FeatureLayer) {
+
+  const view = new MapView({
+    container: "viewDiv",
+    map: new Map({ basemap: "dark-gray-vector" }),
+    center: [31.1656, 48.3794],
+    zoom: 6,
+    constraints: { minZoom: 5, maxZoom: 12 }
+  });
+
+  const baseFilter = "status_1 IS NULL OR (LOWER(status_1) <> 'occupied' AND LOWER(status_1) <> 'occupied - out of suspicion')";
+
+  const ngoLayer = new FeatureLayer({
+    url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/NTS_TableJoin_POP_NTS/FeatureServer/0",
+    outFields: ["*"],
+    definitionExpression: baseFilter,
+    popupTemplate: {
+      title: "{admin3_eng}",
+      content: "<b>Oblast:</b> {admin_1en}<br><b>Raion:</b> {admin_2en}<br><b>IDP:</b> {idp}<br><b>NDP:</b> {ndp}"
+    }
+  });
+
+  view.map.add(ngoLayer);
+
+  const donutCtx = document.getElementById('myDonutChart').getContext('2d');
+  const chartLabel = document.getElementById('chartLabel');
+  const filterButtons = document.querySelectorAll(".circle-btn");
+  const filterOrgLabel = document.getElementById("filterOrgLabel");
+  const searchInput = document.getElementById("oblastSearch");
+  const cardTray = document.getElementById("cardTray");
+
+  const oblastCounter = document.getElementById("oblastCounter");
+  const raionCounter = document.getElementById("raionCounter");
+  const hromadaCounter = document.getElementById("hromadaCounter");
+
+  let currentOrgFilter = "all";
+  let currentOblast = "";
+
+  const donutChart = new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['IDP', 'NDP'],
+      datasets: [{
+        data: [0, 0],
+        backgroundColor: ['#00B5E2', '#444'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '75%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#222',
+          titleColor: '#fff',
+          bodyColor: '#fff'
         }
-      });
-
-      function animateTotal(value, color) {
-        const duration = 800, start = performance.now();
-        function animate(time) {
-          const progress = Math.min((time - start) / duration, 1);
-          const current = Math.floor(progress * value);
-          chartLabel.innerHTML = `${current}<span>Total Affected</span>`;
-          chartLabel.style.color = color;
-          if (progress < 1) requestAnimationFrame(animate);
-        }
-        requestAnimationFrame(animate);
       }
+    }
+  });
 
-      function hexToRgba(hex, alpha = 0.25) {
-        const bigint = parseInt(hex.replace("#", ""), 16);
-        const r = (bigint >> 16) & 255;
-        const g = (bigint >> 8) & 255;
-        const b = bigint & 255;
-        return `rgba(${r},${g},${b},${alpha})`;
-      }
+  function hexToRgba(hex, alpha = 0.25) {
+    const bigint = parseInt(hex.replace("#", ""), 16);
+    return `rgba(${(bigint >> 16) & 255}, ${(bigint >> 8) & 255}, ${bigint & 255}, ${alpha})`;
+  }
 
-      const map = new Map({ basemap: "dark-gray-vector" });
-      const view = new MapView({
-        container: "viewDiv",
-        map: map,
-        center: [31.1656, 48.3794],
-        zoom: 6,
-        constraints: { minZoom: 5, maxZoom: 12 }
-      });
-
-      const baseFilter = "status_1 IS NULL OR (LOWER(status_1) <> 'occupied' AND LOWER(status_1) <> 'occupied - out of suspicion')";
-
-      const ngoLayer = new FeatureLayer({
-        url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/NTS_TableJoin_POP_NTS/FeatureServer/0",
-        outFields: ["*"],
-        definitionExpression: baseFilter,
-        popupTemplate: {
-          title: "{admin3_eng}",
-          content: "<b>Oblast:</b> {admin_1en}<br><b>Raion:</b> {admin_2en}<br><b>IDP:</b> {idp}<br><b>NDP:</b> {ndp}"
-        }
-      });
-
-      map.add(ngoLayer);
-
-      const oblastCounter = document.getElementById("oblastCounter");
-      const raionCounter = document.getElementById("raionCounter");
-      const hromadaCounter = document.getElementById("hromadaCounter");
-
-      function animateCounter(el, val) {
-        const duration = 800, start = performance.now();
-        function step(t) {
-          const progress = Math.min((t - start) / duration, 1);
-          el.textContent = `${el.dataset.label}: ${Math.floor(progress * val)}`;
-          if (progress < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-      }
-
-      function updateStats(expression, color) {
-        ngoLayer.definitionExpression = expression;
-        ngoLayer.renderer = {
-          type: "simple",
-          symbol: {
-            type: "simple-fill",
-            color: hexToRgba(color),
-            outline: { color: "#fff", width: 1 }
-          }
-        };
-        ngoLayer.queryFeatures({
-          where: expression,
-          returnGeometry: false,
-          outFields: ["admin_1en", "admin_2en", "admin3_eng", "idp", "ndp"]
-        }).then(result => {
-          const attrs = result.features.map(f => f.attributes);
-          animateCounter(oblastCounter, new Set(attrs.map(a => a.admin_1en)).size);
-          animateCounter(raionCounter, new Set(attrs.map(a => a.admin_2en)).size);
-          animateCounter(hromadaCounter, new Set(attrs.map(a => a.admin3_eng)).size);
-          let idp = 0, ndp = 0;
-          attrs.forEach(f => { idp += f.idp || 0; ndp += f.ndp || 0; });
-          donutChart.data.datasets[0].data = [idp, ndp];
-          donutChart.data.datasets[0].backgroundColor = [color, hexToRgba(color)];
-          donutChart.update();
-          animateTotal(idp + ndp, color);
-        });
-      }
-
-      const filterButtons = document.querySelectorAll(".circle-btn");
-      const filterOrgLabel = document.getElementById("filterOrgLabel");
-
-      let currentOrgFilter = "all";
-      let currentOblast = "";
-
-      const searchInput = document.getElementById("oblastSearch");
-      searchInput.addEventListener("input", () => {
-        currentOblast = searchInput.value.trim();
-        applyCombinedFilter();
-      });
-
-      function applyCombinedFilter() {
-        const orgClause = currentOrgFilter === "all"
-          ? baseFilter
-          : `(${baseFilter}) AND LOWER(org_plan20_1) = '${currentOrgFilter}'`;
-
-        const oblastClause = currentOblast
-          ? `LOWER(admin_1en) LIKE '%${currentOblast.toLowerCase()}%'`
-          : "1=1";
-
-        const combinedWhere = `(${orgClause}) AND (${oblastClause})`;
-
-        const color = document.querySelector(`.circle-btn[data-filter='${currentOrgFilter}']`)?.dataset.color || "#00B5E2";
-        updateStats(combinedWhere, color);
-      }
-
-      filterButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          filterButtons.forEach(btn => {
-            btn.classList.remove("active");
-            btn.style.backgroundColor = "transparent";
-            btn.style.boxShadow = "none";
-          });
-
-          button.classList.add("active");
-          currentOrgFilter = button.dataset.filter;
-          filterOrgLabel.textContent = button.dataset.label;
-          filterOrgLabel.style.color = button.dataset.color;
-          button.style.backgroundColor = button.dataset.color;
-          button.style.boxShadow = `0 0 10px ${button.dataset.color}, 0 0 20px ${button.dataset.color}`;
-
-          applyCombinedFilter();
-        });
-      });
-
-      view.whenLayerView(ngoLayer).then(() => {
-        setTimeout(() => {
-          document.querySelector(".circle-btn[data-filter='all']").click();
-        }, 300);
-      });
+  function animateCounter(el, val) {
+    const start = performance.now();
+    const duration = 600;
+    requestAnimationFrame(function animate(t) {
+      const progress = Math.min((t - start) / duration, 1);
+      el.textContent = `${el.dataset.label}: ${Math.floor(progress * val)}`;
+      if (progress < 1) requestAnimationFrame(animate);
     });
-  </script>
-</body>
-</html>
+  }
+
+  function animateTotal(value, color) {
+    const start = performance.now();
+    const duration = 600;
+    requestAnimationFrame(function animate(t) {
+      const progress = Math.min((t - start) / duration, 1);
+      chartLabel.innerHTML = `${Math.floor(progress * value)}<span>Total Affected</span>`;
+      chartLabel.style.color = color;
+      if (progress < 1) requestAnimationFrame(animate);
+    });
+  }
+
+  function updateHromadaCards(data, color) {
+    const oldCards = cardTray.querySelectorAll(".hromada-card");
+    oldCards.forEach(card => {
+      card.classList.add("slide-out-left");
+      card.addEventListener("animationend", () => card.remove());
+    });
+
+    const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+    sorted.forEach(([name, total]) => {
+      const card = document.createElement("div");
+      card.className = "hromada-card";
+      card.innerHTML = `
+        <div class="hromada-name">${name}</div>
+        <div class="hromada-value" style="color: ${color}">${total}</div>`;
+      cardTray.appendChild(card);
+    });
+  }
+
+  function updateNGOButtonStates(activeNGOs) {
+    filterButtons.forEach(btn => {
+      const ngo = btn.dataset.filter;
+      btn.style.opacity = ngo === "all" || activeNGOs.has(ngo) ? "1" : "0.25";
+    });
+  }
+
+  function updateStats(whereClause) {
+    ngoLayer.definitionExpression = whereClause;
+    ngoLayer.queryFeatures({
+      where: whereClause,
+      outFields: ["admin_1en", "admin_2en", "admin3_eng", "idp", "ndp", "org_plan20_1"],
+      returnGeometry: false
+    }).then(result => {
+      const attrs = result.features.map(f => f.attributes);
+      const activeNGOs = new Set(attrs.map(a => a.org_plan20_1?.toLowerCase()).filter(Boolean));
+      updateNGOButtonStates(activeNGOs);
+
+      const activeBtn = document.querySelector(`.circle-btn[data-filter="${currentOrgFilter}"]`);
+      const color = activeBtn?.dataset.color || "#00B5E2";
+
+      filterButtons.forEach(btn => {
+        btn.classList.remove("active");
+        btn.style.backgroundColor = "transparent";
+        btn.style.boxShadow = "none";
+      });
+      if (activeBtn) {
+        activeBtn.classList.add("active");
+        activeBtn.style.backgroundColor = color;
+        activeBtn.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
+        filterOrgLabel.textContent = activeBtn.dataset.label;
+        filterOrgLabel.style.color = color;
+      }
+
+      ngoLayer.renderer = {
+        type: "simple",
+        symbol: {
+          type: "simple-fill",
+          color: hexToRgba(color),
+          outline: { color: "#fff", width: 1 }
+        }
+      };
+
+      animateCounter(oblastCounter, new Set(attrs.map(a => a.admin_1en)).size);
+      animateCounter(raionCounter, new Set(attrs.map(a => a.admin_2en)).size);
+      animateCounter(hromadaCounter, new Set(attrs.map(a => a.admin3_eng)).size);
+
+      let idp = 0, ndp = 0;
+      const hromadaData = {};
+      attrs.forEach(f => {
+        const name = f.admin3_eng || 'Unknown';
+        const total = (f.idp || 0) + (f.ndp || 0);
+        hromadaData[name] = Math.max(hromadaData[name] || 0, total);
+        idp += f.idp || 0;
+        ndp += f.ndp || 0;
+      });
+
+      donutChart.data.datasets[0].data = [idp, ndp];
+      donutChart.data.datasets[0].backgroundColor = [color, hexToRgba(color)];
+      donutChart.update();
+      animateTotal(idp + ndp, color);
+      updateHromadaCards(hromadaData, color);
+    });
+  }
+
+  function applyCombinedFilter() {
+    const orgClause = currentOrgFilter === "all"
+      ? baseFilter
+      : `(${baseFilter}) AND LOWER(org_plan20_1) = '${currentOrgFilter}'`;
+    const oblastClause = currentOblast
+      ? `(LOWER(admin_1en) LIKE '%${currentOblast.toLowerCase()}%' OR LOWER(admin_2en) LIKE '%${currentOblast.toLowerCase()}%' OR LOWER(admin3_eng) LIKE '%${currentOblast.toLowerCase()}%')`
+      : "1=1";
+    const combinedWhere = `(${orgClause}) AND (${oblastClause})`;
+    updateStats(combinedWhere);
+  }
+
+  filterButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const filter = btn.dataset.filter;
+      if (filter === "all") {
+        currentOrgFilter = "all";
+        currentOblast = "";
+        searchInput.value = "";
+        filterButtons.forEach(b => b.style.opacity = "1");
+      } else {
+        currentOrgFilter = filter;
+      }
+      applyCombinedFilter();
+    });
+  });
+
+  searchInput.addEventListener("input", () => {
+    currentOblast = searchInput.value.trim();
+    applyCombinedFilter();
+  });
+
+  view.whenLayerView(ngoLayer).then(() => {
+    document.querySelector(`.circle-btn[data-filter="all"]`).click();
+  });
+
+});
+</script>
+
